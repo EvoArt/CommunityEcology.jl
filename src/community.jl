@@ -48,9 +48,9 @@ function Community(counts::AbstractMatrix{<:Real}; samples=string.("S", 1:size(c
                    features=string.("F", 1:size(counts, 2)), sequences=String[], taxonomy=nothing,
                    metadata=nothing, tree=nothing, by::Symbol=:sample)
     ns, nf = size(counts)
-    samples = string.(collect(samples))
-    features = string.(collect(features))
-    sequences = string.(collect(sequences))
+    samples = String.(string.(collect(samples)))      # String, not e.g. CSV's String7
+    features = String.(string.(collect(features)))
+    sequences = String.(string.(collect(sequences)))
     length(samples) == ns || throw(DimensionMismatch("$(length(samples)) sample names for $ns rows"))
     length(features) == nf || throw(DimensionMismatch("$(length(features)) feature names for $nf columns"))
     isempty(sequences) || length(sequences) == nf ||

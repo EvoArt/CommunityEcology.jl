@@ -184,3 +184,11 @@ end
     @test (@__MODULE__).metadata === DataFrames.metadata
     @test metadata(C).group == META.group
 end
+
+@testset "short names read from CSV (InlineStrings)" begin
+    mktempdir() do dir
+        write_community(dir, C)
+        c = read_community(dir)
+        @test samples(c) == IDS && eltype(samples(c)) == String
+    end
+end
