@@ -1,5 +1,6 @@
 using Test, Random, DataFrames, CommunityEcology
-using CairoMakie
+using CairoMakie, CSV
+import BIOMFormat, Microbiome
 
 const X = [8 1 0 0;
            7 2 0 1;
@@ -118,4 +119,68 @@ end
         @test metadata(loaded).group == META.group
         @test ntips(tree(loaded)) == 4
     end
+end
+
+@testset "Example data and table constructors" begin
+    d = dune()
+    @test size(d) == (20, 30)
+    @test sum(counts(d)) == 685
+    @test metadata(d).Management[1:2] == ["SF", "BF"]
+    @test taxonomy(d).Family[1:2] == ["Asteraceae", "Poaceae"]
+    @test size(varespec()) == (24, 44)
+    @test "pH" in names(metadata(varespec()))
+
+    wide = DataFrame(sample=IDS, F1=X[:, 1], F2=X[:, 2], F3=X[:, 3], F4=X[:, 4])
+    c = Community(wide; metadata=META)
+    @test counts(c) == X && features(c) == FEATURES && metadata(c).group == META.group
+    @test counts(Community(wide; features=[:F2, :F1])) == X[:, [2, 1]]
+    @test_throws ArgumentError Community(wide; sample=:site)
+    mktempdir() do dir
+        f = joinpath(dir, "counts.csv")
+        CSV.write(f, wide)
+        @test counts(Community(f)) == X
+    end
+end
+
+@testset "BIOM tables" begin
+    seqs = [repeat("ACGT", 6), repeat("TTGCA", 5), repeat("GGCAT", 5), repeat("CATG", 6)]
+    lineage = [["k__Bacteria", "p__Firmicutes"], ["k__Bacteria", "p__"], String[], ["k__Archaea"]]
+    t = BIOMFormat.BIOMTable(permutedims(X), seqs, IDS;
+                             observation_metadata=[Dict("taxonomy" => l) for l in lineage],
+                             sample_metadata=[Dict("group" => g) for g in META.group])
+    c = Community(t)
+    @test counts(c) == X
+    @test features(c) == ["ASV1", "ASV2", "ASV3", "ASV4"] && sequences(c) == seqs
+    @test isequal(taxonomy(c).Phylum, ["Firmicutes", missing, missing, missing])
+    @test metadata(c).group == META.group
+    top = Community(t; top=2, metadata=META)
+    @test sequences(top) == seqs[[1, 3]] && counts(top) == X[:, [1, 3]]
+end
+
+@testset "cophenetic distances follow features" begin
+    t = read_newick("((F1:1,F2:2):1,(F3:1,F4:1):1);")
+    c = Community(X; samples=IDS, features=FEATURES, tree=t)
+    @test cophenetic(c)[1, 2] == 3 && cophenetic(c)[1, 3] == 4
+    @test cophenetic(c[:, ["F3", "F1"]]) == [0 4; 4 0]
+end
+
+@testset "Microbiome.jl round trip" begin
+    p = Microbiome.CommunityProfile(C)
+    @test Microbiome.abundances(p) == permutedims(X)
+    @test Microbiome.samplenames(p) == IDS && Microbiome.featurenames(p) == FEATURES
+    back = Community(p)
+    @test counts(back) == X && metadata(back).group == META.group
+end
+
+@testset "add_taxonomy and add_tree" begin
+    tax = DataFrame(Phylum=["A", "A", "B", "B"])
+    @test taxonomy(add_taxonomy(C, tax)).Phylum == tax.Phylum
+    t = add_tree(C, "((F1:1,F2:2):1,(F3:1,(F4:1,F5:1):1):1);")
+    @test ntips(tree(t)) == 4
+    @test_throws ArgumentError add_tree(C, "((F1:1,F2:2):1,F3:1);")
+end
+
+@testset "no export clashes with DataFrames" begin
+    @test (@__MODULE__).metadata === DataFrames.metadata
+    @test metadata(C).group == META.group
 end

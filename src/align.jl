@@ -11,7 +11,7 @@ struct _AlignBuffer
     H::Matrix{Int32}
     T::Matrix{UInt8}
 end
-_AlignBuffer(m, n) = _AlignBuffer(Matrix{Int32}(undef, m + 1, n + 1), Matrix{UInt8}(undef, m + 1, n + 1))
+_AlignBuffer(m::Integer, n::Integer) = _AlignBuffer(Matrix{Int32}(undef, m + 1, n + 1), Matrix{UInt8}(undef, m + 1, n + 1))
 
 # (differences, aligned columns) between a and b, end gaps not counted
 function _align_diffs(a, b, band, buf)

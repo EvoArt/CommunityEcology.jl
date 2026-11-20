@@ -64,9 +64,38 @@ function Community(counts::AbstractMatrix{<:Real}; samples=string.("S", 1:size(c
     return Community(Matrix(counts), samples, features, sequences, tax, meta, tree)
 end
 
+"""
+    Community(table; sample=:sample, features=nothing, metadata=nothing, kw...)
+
+A community from a wide table (a `DataFrame`, CSV file, or any Tables.jl
+table) with one row per sample: the column `sample` names the samples and
+the `features` columns (default: every other column) hold the counts.
+
+```julia
+c = Community("counts.csv"; metadata="samples.csv")
+```
+"""
+function Community(df::AbstractDataFrame; sample::Symbol=:sample, features=nothing, kw...)
+    String(sample) in names(df) ||
+        throw(ArgumentError("the table has no column `$sample` naming the samples; its columns are: " *
+                            join(first(names(df), 8), ", ") * (ncol(df) > 8 ? ", …" : "") *
+                            ". Pass `sample=:column`."))
+    cols = features === nothing ? setdiff(names(df), [String(sample)]) : string.(collect(features))
+    bad = [n for n in cols if !(eltype(df[!, n]) <: Union{Missing,Real})]
+    isempty(bad) || throw(ArgumentError("count columns must be numeric; these are not: " * join(bad, ", ")))
+    X = Matrix(coalesce.(df[!, cols], 0))
+    X = all(isinteger, X) ? Int.(X) : float.(X)
+    return Community(X; samples=string.(df[!, sample]), features=cols, kw...)
+end
+
+Community(file::AbstractString; delim=nothing, kw...) = Community(read_metadata(file; delim=delim); kw...)
+
 function Community(st; prefix="ASV", kw...)
+    if !all(p -> hasproperty(st, p), (:samples, :sequences, :table)) && Tables.istable(st)
+        return Community(DataFrame(Tables.columntable(st)); kw...)
+    end
     all(p -> hasproperty(st, p), (:samples, :sequences, :table)) ||
-        throw(ArgumentError("expected a count matrix or a sequence table (with samples, sequences and table)"))
+        throw(ArgumentError("expected a count matrix, a table of counts, or a sequence table (with samples, sequences and table)"))
     nf = length(st.sequences)
     return Community(st.table; samples=st.samples, features=string.(prefix, 1:nf), sequences=st.sequences, kw...)
 end
@@ -237,3 +266,41 @@ end
 Base.:(==)(a::Community, b::Community) =
     a.counts == b.counts && a.samples == b.samples && a.features == b.features &&
     a.sequences == b.sequences && isequal(a.taxonomy, b.taxonomy) && isequal(a.metadata, b.metadata)
+
+"""
+    cophenetic(t::PhyloTree)
+    cophenetic(c::Community)
+
+Patristic (tip-to-tip) distances along the branches of a tree. For a
+community, rows and columns follow `features(c)`.
+"""
+function cophenetic(c::Community)
+    c.tree === nothing && throw(ArgumentError("the community has no tree"))
+    pos = Dict(n => i for (i, n) in enumerate(tiplabels(c.tree)))
+    idx = [pos[f] for f in c.features]
+    return cophenetic(c.tree)[idx, idx]
+end
+
+"""
+    add_taxonomy(c, taxonomy)
+
+A copy of `c` with a new taxonomy: any table with one row per feature, such
+as AssignTaxonomy's result. Rows are matched to features by a `Sequence`
+column when there is one, otherwise taken in feature order.
+"""
+add_taxonomy(c::Community, tax) =
+    Community(c.counts, c.samples, c.features, c.sequences, _match_taxonomy(tax, c.features, c.sequences),
+              c.metadata, c.tree)
+
+"""
+    add_tree(c, tree)
+
+A copy of `c` with a phylogenetic tree: a [`PhyloTree`](@ref), Newick text,
+or a Newick file. Every feature must be a tip; other tips are dropped.
+"""
+function add_tree(c::Community, t)
+    t isa PhyloTree || (t = read_newick(t))
+    _check_tree(t, c.features)
+    return Community(c.counts, c.samples, c.features, c.sequences, c.taxonomy, c.metadata,
+                     keep_tips(t, c.features))
+end
