@@ -192,3 +192,9 @@ end
         @test samples(c) == IDS && eltype(samples(c)) == String
     end
 end
+
+@testset "metadata with its own missing values" begin
+    meta = DataFrame(sample=IDS, ph=[7.1, missing, 6.8, 7.0, 6.5, missing])
+    c = Community(X; samples=IDS, features=FEATURES, metadata=meta)
+    @test isequal(metadata(c).ph, meta.ph)
+end

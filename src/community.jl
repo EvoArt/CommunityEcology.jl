@@ -148,7 +148,7 @@ function _match_metadata(meta, samples, by)
         n == String(by) && continue
         col = df[!, n]
         out[!, n] = [i == 0 ? missing : col[i] for i in idx]
-        any(==(0), idx) || (out[!, n] = disallowmissing(out[!, n]))
+        any(ismissing, out[!, n]) || (out[!, n] = disallowmissing(out[!, n]))
     end
     return out
 end
