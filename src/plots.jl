@@ -5,6 +5,10 @@
 function plot_ordination end
 function plot_ordination! end
 
+"""Plot site scores and feature directions from a two-axis `RDAResult`."""
+function plot_rda end
+function plot_rda! end
+
 """Plot relative composition as stacked bars. Load a Makie backend first."""
 function plot_composition end
 function plot_composition! end

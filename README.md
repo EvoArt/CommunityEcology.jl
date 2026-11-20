@@ -65,6 +65,7 @@ recipes. For example:
 using CairoMakie
 fig = plot_ordination(o; colorby=:site, labels=true)
 save("ordination.png", fig)
+plot_rda(rda(c, [:site, :temperature]))
 plot_composition(c; top=10)
 plot_alpha(c; measure=:shannon, group=:site)
 plot_rarefaction(c)

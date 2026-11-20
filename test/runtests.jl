@@ -37,7 +37,8 @@ end
     o = ordinate(C, :pcoa)
     bd = betadisper(C, :group)
     t = read_newick("((F1:1,F2:1):1,(F3:1,F4:1):1);")
-    figures = [plot_ordination(o; colorby=:group), plot_composition(C),
+    figures = [plot_ordination(o; colorby=:group),
+               plot_rda(rda(C, [:group, :temperature])), plot_composition(C),
                plot_alpha(C; group=:group), plot_rarefaction(C),
                plot_heatmap(C), plot_dispersion(bd), plot_tree(t)]
     @test all(f -> f isa Figure, figures)

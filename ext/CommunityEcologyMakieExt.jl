@@ -2,8 +2,9 @@ module CommunityEcologyMakieExt
 
 import Makie
 import CommunityEcology as CE
-using CommunityEcology: Community, Ordination, PhyloTree, BetaDisper, NMDSResult
-import CommunityEcology: plot_ordination, plot_ordination!, plot_composition, plot_composition!,
+using CommunityEcology: Community, Ordination, RDAResult, PhyloTree, BetaDisper, NMDSResult
+import CommunityEcology: plot_ordination, plot_ordination!, plot_rda, plot_rda!,
+    plot_composition, plot_composition!,
     plot_alpha, plot_alpha!, plot_rarefaction, plot_rarefaction!, plot_heatmap,
     plot_heatmap!, plot_dispersion, plot_dispersion!, plot_shepard, plot_shepard!,
     plot_tree, plot_tree!
@@ -77,6 +78,49 @@ function plot_ordination(o::Ordination; colorby=nothing, labels::Bool=false,
             Makie.Legend(fig[1, 2], elements, levels, string(colorby))
         end
     end
+    return fig
+end
+
+Makie.@recipe RDAPlot (result,) begin
+    labels = false
+    showfeatures = true
+    markersize = 11
+end
+
+function Makie.plot!(plot::RDAPlot)
+    r = plot[1][]
+    size(r.sites, 2) >= 2 || throw(ArgumentError("RDA needs two constrained axes to plot"))
+    Makie.scatter!(plot, r.sites[:, 1], r.sites[:, 2];
+                   color=:teal, markersize=plot.markersize[])
+    if plot.labels[]
+        Makie.text!(plot, r.sites[:, 1], r.sites[:, 2]; text=r.samples,
+                    offset=(7, 7), align=(:left, :bottom), fontsize=10)
+    end
+    if plot.showfeatures[]
+        site_extent = maximum(abs, r.sites[:, 1:2])
+        feature_extent = maximum(abs, r.feature_scores[:, 1:2])
+        scale = iszero(feature_extent) ? 0.0 : 0.8 * site_extent / feature_extent
+        for (i, feature) in enumerate(r.features)
+            x = scale * r.feature_scores[i, 1]
+            y = scale * r.feature_scores[i, 2]
+            Makie.lines!(plot, [0.0, x], [0.0, y]; color=:darkorange, linewidth=1.5)
+            Makie.text!(plot, x, y; text=feature, color=:darkorange,
+                        offset=(4, 4), align=(:left, :bottom), fontsize=10)
+        end
+    end
+    return plot
+end
+
+plot_rda!(axis, r::RDAResult; kwargs...) = rdaplot!(axis, r; kwargs...)
+
+function plot_rda(r::RDAResult; size=(800, 550), kwargs...)
+    size(r.sites, 2) >= 2 || throw(ArgumentError("RDA needs two constrained axes to plot"))
+    fig = Makie.Figure(; size)
+    ax = Makie.Axis(fig[1, 1];
+                    xlabel="RDA1 ($(round(100 * r.explained[1]; digits=1))%)",
+                    ylabel="RDA2 ($(round(100 * r.explained[2]; digits=1))%)",
+                    title="RDA · adjusted R² $(round(r.adjusted_r2; digits=3))")
+    plot_rda!(ax, r; kwargs...)
     return fig
 end
 

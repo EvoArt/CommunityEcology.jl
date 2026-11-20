@@ -35,6 +35,7 @@ export permanova, pairwise_permanova, PermanovaResult, PairwisePermanova, adjust
 export betadisper, permutest, dispersion_anova, BetaDisper, DispersionTest
 export nmds, pcoa, NMDSResult, PCoAResult, procrustes, shepard
 export plot_ordination, plot_ordination!, plot_composition, plot_composition!,
+       plot_rda, plot_rda!,
        plot_alpha, plot_alpha!, plot_rarefaction, plot_rarefaction!,
        plot_heatmap, plot_heatmap!, plot_dispersion, plot_dispersion!,
        plot_shepard, plot_shepard!, plot_tree, plot_tree!
