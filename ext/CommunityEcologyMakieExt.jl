@@ -114,7 +114,7 @@ end
 plot_rda!(axis, r::RDAResult; kwargs...) = rdaplot!(axis, r; kwargs...)
 
 function plot_rda(r::RDAResult; size=(800, 550), kwargs...)
-    size(r.sites, 2) >= 2 || throw(ArgumentError("RDA needs two constrained axes to plot"))
+    Base.size(r.sites, 2) >= 2 || throw(ArgumentError("RDA needs two constrained axes to plot"))
     fig = Makie.Figure(; size)
     ax = Makie.Axis(fig[1, 1];
                     xlabel="RDA1 ($(round(100 * r.explained[1]; digits=1))%)",
