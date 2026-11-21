@@ -199,3 +199,39 @@ end
     c = Community(X; samples=IDS, features=FEATURES, metadata=meta)
     @test isequal(metadata(c).ph, meta.ph)
 end
+
+@testset "beta_partition (Baselga multi-site)" begin
+    # three sites {a,b,c}, {a,b}, {d}: Σ Sᵢ - S_T = 2, Σ min = 2, Σ max = 6
+    P = [1 1 1 0; 1 1 0 0; 0 0 0 1]
+    c = Community(P; samples=["s1", "s2", "s3"], features=["a", "b", "c", "d"],
+                  metadata=DataFrame(sample=["s1", "s2", "s3"], g=["x", "x", "y"]))
+    j = beta_partition(c)
+    @test j.total ≈ 0.8 && j.turnover ≈ 2 / 3 && j.nestedness ≈ 0.8 - 2 / 3 && j.relative_turnover ≈ 5 / 6
+    s = beta_partition(c; family=:sorensen)
+    @test s.total ≈ 2 / 3 && s.turnover ≈ 0.5 && s.nestedness ≈ 1 / 6
+    @test_throws ArgumentError beta_partition(c; family=:bray)
+
+    # agrees with the pairwise-loop implementation of DiversityFunctions.jl (Jaccard family)
+    function βJAC_loop(x)
+        b(x₁, x₂) = sum(x₁ .& .!x₂)
+        num = 0; denom = sum(x[1, :]) - sum(sum(x; dims=1) .> 0)
+        for i in 2:size(x, 1)
+            denom += sum(x[i, :])
+            for j in 1:i
+                num += b(x[i, :], x[j, :]) + b(x[j, :], x[i, :])
+            end
+        end
+        num / (num + denom)
+    end
+    Y = rand(MersenneTwister(1), Bool, 9, 12)
+    r = Community(Int.(Y); samples=string.("s", 1:9), features=string.("f", 1:12))
+    @test beta_partition(r).total ≈ βJAC_loop(Y)
+
+    t = beta_partition(c, :g; dispersion=nothing)
+    @test DataFrame(t).g == ["x", "y"] && size(t) == (2, 5)
+    @test isnan(DataFrame(t).βJAC[2])                     # one sample: undefined
+    @test_throws ArgumentError beta_partition(c[1:1, :])
+    @test occursin("| g | βJAC", sprint(show, MIME"text/markdown"(), t))
+    v = beta_partition(dune(), :Management)
+    @test "dispersion" in names(DataFrame(v)) && all(0 .<= DataFrame(v).βJAC .<= 1)
+end

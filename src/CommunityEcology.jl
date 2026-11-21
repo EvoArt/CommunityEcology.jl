@@ -32,6 +32,7 @@ export nj_tree, build_tree, sequence_distances, midpoint_root, write_newick, rea
 export Ordination, ordinate, RDAResult, rda
 export MantelResult, mantel, envfit, factorfit
 export simper
+export beta_partition, BetaPartition
 export write_community, read_community
 # Not exported, because other common packages export different functions with these
 # names (Distributions: nsamples; PhyloBuilder/PlotPhyloTree: PhyloTree, ntips,
@@ -57,6 +58,7 @@ include("ordination.jl")
 include("rda.jl")
 include("permutation.jl")
 include("simper.jl")
+include("partition.jl")
 include("io.jl")
 include("show.jl")
 include("plots.jl")
