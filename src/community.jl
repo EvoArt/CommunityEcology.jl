@@ -304,3 +304,22 @@ function add_tree(c::Community, t)
     return Community(c.counts, c.samples, c.features, c.sequences, c.taxonomy, c.metadata,
                      keep_tips(t, c.features))
 end
+
+"""
+    add_taxonomy(c, reference::AbstractString; kw...)
+
+Classify the community's sequences against a DADA2-formatted reference file with
+AssignTaxonomy's naive Bayesian classifier and attach the ranks; keywords go to
+`AssignTaxonomy.assignTaxonomy`. Needs `using AssignTaxonomy`. Pipes well:
+
+```julia
+@chain seqtab begin
+    Community
+    add_taxonomy("silva_nr99_v138.2_toGenus_trainset.fa.gz")
+    collapse(:Family)
+end
+```
+"""
+add_taxonomy(c::Community, reference::AbstractString; kw...) = _classify(c, reference; kw...)
+_classify(c, reference; kw...) =
+    error("add_taxonomy(community, reference_file) classifies with AssignTaxonomy: run `using AssignTaxonomy` first")

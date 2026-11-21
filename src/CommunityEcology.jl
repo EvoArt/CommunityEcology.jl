@@ -9,6 +9,7 @@ module CommunityEcology
 using DataFrames, Distances, LinearAlgebra, Random, Statistics, Tables
 import CSV, Downloads, p7zip_jll
 import DataFrames: metadata   # extend DataAPI.metadata, so `using DataFrames` does not clash
+import StatsBase: counts      # likewise StatsBase.counts (StatsBase is already loaded via PERMANOVA)
 using Printf: @sprintf
 using SpecialFunctions: loggamma
 
@@ -20,18 +21,21 @@ using BetaDispersion: betadisper, permutest, dispersion_anova, BetaDisper, Dispe
 import NonmetricMDS
 using NonmetricMDS: nmds, pcoa, NMDSResult, PCoAResult, procrustes, shepard
 
-export Community, nsamples, nfeatures, samples, features, counts, metadata, taxonomy, sequences,
+export Community, nfeatures, samples, features, counts, metadata, taxonomy, sequences,
        tree, ranks, sample_depths, add_metadata, add_taxonomy, add_tree, read_metadata
 export filter_samples, filter_features, prune, rarefy, relative, hellinger, chord, wisconsin, clr, presence_absence,
        collapse, top_features, lump_rare
 export richness, shannon, simpson, invsimpson, chao1, pielou, hill, alpha_diversity, rarecurve, specaccum
-export DistanceMatrix, beta_diversity, unifrac
-export PhyloTree, nj_tree, build_tree, sequence_distances, midpoint_root, write_newick, read_newick,
-       faith_pd, ntips, tiplabels, cophenetic
+export beta_diversity, unifrac
+export nj_tree, build_tree, sequence_distances, midpoint_root, write_newick, read_newick,
+       faith_pd, tiplabels, cophenetic
 export Ordination, ordinate, RDAResult, rda
 export MantelResult, mantel, envfit, factorfit
 export simper
 export write_community, read_community
+# Not exported, because other common packages export different functions with these
+# names (Distributions: nsamples; PhyloBuilder/PlotPhyloTree: PhyloTree, ntips,
+# DistanceMatrix): CommunityEcology.nsamples, .ntips, .PhyloTree, .DistanceMatrix.
 export dune, varespec, miseq_sop, miseq_sop_reads
 export permanova, pairwise_permanova, PermanovaResult, PairwisePermanova, adjust_p, @formula
 export betadisper, permutest, dispersion_anova, BetaDisper, DispersionTest

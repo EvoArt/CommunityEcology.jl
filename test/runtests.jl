@@ -1,4 +1,5 @@
 using Test, Random, DataFrames, CommunityEcology
+using CommunityEcology: nsamples, ntips, PhyloTree, DistanceMatrix
 using CairoMakie, CSV
 import BIOMFormat, Microbiome
 
