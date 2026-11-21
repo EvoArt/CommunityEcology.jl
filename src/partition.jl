@@ -135,9 +135,12 @@ Base.show(io::IO, m::MIME"text/html", bp::BetaPartition) = show(io, m, _rounded(
 
 function Base.show(io::IO, ::MIME"text/markdown", bp::BetaPartition)
     t = _rounded(bp)
+    cells = [string.(collect(row)) for row in eachrow(t)]
+    # separator widths follow the contents, which pandoc uses as relative column widths
+    widths = [maximum(length, vcat(n, [c[j] for c in cells])) for (j, n) in enumerate(names(t))]
     println(io, "| ", join(names(t), " | "), " |")
-    println(io, "|", repeat("---|", ncol(t)))
-    for row in eachrow(t)
-        println(io, "| ", join(string.(collect(row)), " | "), " |")
+    println(io, "|", join([repeat("-", w + 2) for w in widths], "|"), "|")
+    for c in cells
+        println(io, "| ", join(c, " | "), " |")
     end
 end
