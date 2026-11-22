@@ -16,7 +16,9 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Install documentation dependencies
         run: |
-          julia --project=docs -e 'using Pkg; Pkg.develop([Pkg.PackageSpec(url="https://github.com/EvoArt/NonmetricMDS.jl", rev="b45570263269ba4111a59ae6e68966754a2e29ca"), Pkg.PackageSpec(path=pwd())]); Pkg.instantiate()'
+          git clone https://github.com/EvoArt/NonmetricMDS.jl ../NonmetricMDS.jl
+          git -C ../NonmetricMDS.jl checkout b45570263269ba4111a59ae6e68966754a2e29ca
+          julia --project=docs -e 'using Pkg; Pkg.develop([Pkg.PackageSpec(path="../NonmetricMDS.jl"), Pkg.PackageSpec(path=pwd())]); Pkg.instantiate()'
       - name: Build and deploy documentation
         run: julia --project=docs docs/make.jl
         env:
