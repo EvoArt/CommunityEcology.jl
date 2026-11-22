@@ -1,5 +1,9 @@
 # CommunityEcology.jl
 
+[![Dev docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://EvoArt.github.io/CommunityEcology.jl/dev/)
+
+[Documentation](https://EvoArt.github.io/CommunityEcology.jl/dev/) · [Source](https://github.com/EvoArt/CommunityEcology.jl)
+
 Community ecology analyses for Julia. A `Community` holds a samples × features
 count table, sample metadata, and optional taxonomy, sequences, and a
 phylogenetic tree. The package covers a useful subset of the workflows commonly
