@@ -26,30 +26,95 @@ function _groups(values)
     return levels, [lookup[label] for label in labels]
 end
 
-function _ordinal_colors(o, colorby)
-    colorby === nothing && return :teal
-    colorby in propertynames(o.metadata) ||
-        throw(ArgumentError("metadata has no column $colorby"))
-    values = o.metadata[!, colorby]
-    if all(v -> !ismissing(v) && v isa Real, values)
-        return Float64.(values)
+const MARKERS = (:circle, :utriangle, :diamond, :rect, :dtriangle, :cross, :star5, :hexagon)
+
+# level => style, from `nothing` (cycle `default`), a vector (matched to the sorted levels),
+# or a Dict keyed by the metadata values (or their strings)
+function _styles(spec, levels, default)
+    spec === nothing && return Dict(l => default[mod1(i, length(default))] for (i, l) in enumerate(levels))
+    if spec isa AbstractDict
+        s = Dict(string(k) => v for (k, v) in spec)
+        return Dict(l => haskey(s, l) ? s[l] : throw(ArgumentError("no style given for \"$l\"")) for l in levels)
     end
-    _, ids = _groups(values)
-    return [_color(i) for i in ids]
+    return Dict(l => spec[mod1(i, length(spec))] for (i, l) in enumerate(levels))
 end
 
+function _column(metadata, col)
+    col in propertynames(metadata) || throw(ArgumentError("metadata has no column $col"))
+    return string.(metadata[!, col])
+end
+
+_levels(values) = sort!(unique(values))
+
+# numeric columns go on a colormap, categorical ones get a level => colour Dict
+function _point_colors(o, colorby, palette)
+    colorby === nothing && return :teal, nothing
+    v = _column(o.metadata, colorby)
+    raw = o.metadata[!, colorby]
+    palette === nothing && all(x -> !ismissing(x) && x isa Real, raw) && return Float64.(raw), nothing
+    styles = _styles(palette, _levels(v), PALETTE)
+    return [styles[x] for x in v], styles
+end
+
+"""
+    ordinationplot(o::Ordination; colorby, markerby, palette, markers, alpha, centroids, ...)
+
+Sample scores of `o`, coloured by the metadata column `colorby` and shaped by `markerby`.
+`palette` and `markers` are vectors (matched to the sorted levels) or Dicts from level to
+colour or marker; `alpha` applies to the sample points. With `centroids=true` (needs a
+categorical `colorby`) each `colorby` group gets a centroid (`centroidmarker`), joined by
+dashed lines to the centroid of each of its `markerby` subgroups or, without `markerby`, to
+each of its points.
+"""
 Makie.@recipe OrdinationPlot (ordination,) begin
     colorby = nothing
+    markerby = nothing
+    palette = nothing
+    markers = nothing
+    alpha = 1.0
     labels = false
     markersize = 13
+    centroids = false
+    centroidsize = 22
+    centroidmarker = :rect
+    strokewidth = 1.5
 end
 
 function Makie.plot!(plot::OrdinationPlot)
     o = plot[1][]
     size(o.points, 2) >= 2 || throw(ArgumentError("ordination needs two axes to plot"))
-    Makie.scatter!(plot, o.points[:, 1], o.points[:, 2];
-                   color=_ordinal_colors(o, plot.colorby[]),
-                   colormap=:viridis, markersize=plot.markersize[])
+    x, y = o.points[:, 1], o.points[:, 2]
+    colors, cstyles = _point_colors(o, plot.colorby[], plot.palette[])
+    a = plot.alpha[]
+    pointcolors = colors isa AbstractVector{<:Real} ? colors :
+                  colors isa AbstractVector ? [(c, a) for c in colors] : (colors, a)
+    mb = plot.markerby[]
+    mv = mb === nothing ? nothing : _column(o.metadata, mb)
+    mstyles = mb === nothing ? nothing : _styles(plot.markers[], _levels(mv), MARKERS)
+    Makie.scatter!(plot, x, y; color=pointcolors, colormap=:viridis, markersize=plot.markersize[],
+                   marker=mb === nothing ? :circle : [mstyles[m] for m in mv])
+    if plot.centroids[]
+        cstyles === nothing && throw(ArgumentError("centroids need a categorical colorby"))
+        cv = _column(o.metadata, plot.colorby[])
+        centre(sel) = Makie.Point2f(sum(x[sel]) / count(sel), sum(y[sel]) / count(sel))
+        cs, sw = plot.centroidsize[], plot.strokewidth[]
+        for g in _levels(cv)
+            sel = cv .== g
+            c = centre(sel)
+            if mv === nothing
+                for i in findall(sel)
+                    Makie.lines!(plot, [c, Makie.Point2f(x[i], y[i])]; linestyle=:dash, color=(cstyles[g], a))
+                end
+            else
+                for m in _levels(mv[sel])
+                    cc = centre(sel .& (mv .== m))
+                    Makie.lines!(plot, [c, cc]; linestyle=:dash, color=cstyles[g])
+                    Makie.scatter!(plot, cc; color=cstyles[g], strokewidth=sw, marker=mstyles[m], markersize=cs)
+                end
+            end
+            Makie.scatter!(plot, c; color=cstyles[g], strokewidth=sw, marker=plot.centroidmarker[], markersize=cs)
+        end
+    end
     if plot.labels[]
         Makie.text!(plot, o.points[:, 1], o.points[:, 2]; text=o.samples,
                     offset=(7, 7), align=(:left, :bottom), fontsize=11)
@@ -131,27 +196,101 @@ function _composition(c, top, proportions)
     return reduced, X
 end
 
+# sample order from `sortby`: a column, `column => level order`, or a vector of these (outermost first)
+function _sample_order(metadata, sortby)
+    sortby === nothing && return collect(1:size(metadata, 1))
+    specs = sortby isa AbstractVector ? sortby : [sortby]
+    key(s::Symbol) = _column(metadata, s)
+    function key(s::Pair)
+        v, levels = _column(metadata, first(s)), string.(last(s))
+        pos = indexin(v, levels)
+        any(isnothing, pos) && throw(ArgumentError("$(first(s)) has values not in the given level order"))
+        return pos
+    end
+    keys = [key(s) for s in specs]
+    return sortperm(collect(zip(keys...)))         # stable: keeps the original order within groups
+end
+
+# runs of equal consecutive values, as (value, first, last)
+function _runs(v)
+    runs = Tuple{String,Int,Int}[]
+    for (i, x) in enumerate(v)
+        if isempty(runs) || runs[end][1] != x
+            push!(runs, (x, i, i))
+        else
+            runs[end] = (x, runs[end][2], i)
+        end
+    end
+    return runs
+end
+
+"""
+    compositionplot(c::Community; top, features, colors, sortby, above, below, ...)
+
+Stacked bars of the feature abundances in each sample. `features` picks and orders the
+features (otherwise the `top` most abundant, with the rest lumped), coloured by `colors`.
+`sortby` orders the samples by metadata columns (`column` or `column => level order`,
+outermost first). `above` and `below` name metadata columns whose consecutive groups are
+marked by labelled brackets above or below the bars; `grouplabels` and `groupcolors` are
+Dicts from group value to label text and bracket colour.
+"""
 Makie.@recipe CompositionPlot (community,) begin
     top = 10
     proportions = true
+    features = nothing
+    colors = nothing
+    sortby = nothing
+    above = nothing
+    below = nothing
+    grouplabels = nothing
+    groupcolors = nothing
+    barwidth = 0.86
+    bracketwidth = 1.5
+    fontsize = 14
 end
 
 function Makie.plot!(plot::CompositionPlot)
-    c, X = _composition(plot[1][], plot.top[], plot.proportions[])
-    rectangles = Makie.Rect2f[]
-    colors = Symbol[]
-    for i in 1:CE.nsamples(c)
+    c0 = plot[1][]
+    order = _sample_order(c0.metadata, plot.sortby[])
+    fs = plot.features[]
+    if fs === nothing
+        c, X = _composition(c0[order, :], plot.top[], plot.proportions[])
+        names = c.features
+    else
+        base = plot.proportions[] ? CE.relative(c0) : c0
+        cols = indexin(string.(fs), base.features)
+        any(isnothing, cols) && throw(ArgumentError("features not in the community: $(fs[isnothing.(cols)])"))
+        X, names = Float64.(base.counts[order, cols]), string.(fs)
+    end
+    meta = c0.metadata[order, :]
+    palette = plot.colors[] === nothing ? [_color(j) for j in eachindex(names)] : Makie.to_color.(plot.colors[])
+    w = plot.barwidth[]
+    rectangles, colors = Makie.Rect2f[], eltype(palette)[]
+    for i in axes(X, 1)
         bottom = 0.0
-        for j in 1:CE.nfeatures(c)
-            height = X[i, j]
-            if height > 0
-                push!(rectangles, Makie.Rect2f(i - 0.43, bottom, 0.86, height))
-                push!(colors, _color(j))
+        for j in axes(X, 2)
+            if X[i, j] > 0
+                push!(rectangles, Makie.Rect2f(i - w / 2, bottom, w, X[i, j]))
+                push!(colors, palette[mod1(j, length(palette))])
             end
-            bottom += height
+            bottom += X[i, j]
         end
     end
     isempty(rectangles) || Makie.poly!(plot, rectangles; color=colors, strokewidth=0)
+    h = plot.proportions[] ? 1.0 : maximum(sum(X; dims=2))
+    labels = plot.grouplabels[] === nothing ? Dict{String,String}() :
+             Dict(string(k) => string(v) for (k, v) in plot.grouplabels[])
+    bcolors = plot.groupcolors[] === nothing ? Dict{String,Any}() :
+              Dict{String,Any}(string(k) => v for (k, v) in plot.groupcolors[])
+    for (col, y0, y1, ylab) in ((plot.above[], 1.02, 1.05, 1.09), (plot.below[], -0.02, -0.06, -0.14))
+        col === nothing && continue
+        for (g, s, e) in _runs(_column(meta, col))
+            Makie.lines!(plot, [s - 0.4, s - 0.4, e + 0.4, e + 0.4], h .* [y0, y1, y1, y0];
+                         color=get(bcolors, g, :black), linewidth=plot.bracketwidth[])
+            Makie.text!(plot, (s + e) / 2, ylab * h; text=get(labels, g, g), align=(:center, :center),
+                        fontsize=plot.fontsize[])
+        end
+    end
     return plot
 end
 

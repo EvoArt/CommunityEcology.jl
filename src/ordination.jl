@@ -19,6 +19,20 @@ struct Ordination
 end
 
 """
+    Ordination(points, metadata; method=:nmds, distance=:unknown, axislabels=["Dim 1", "Dim 2", …])
+
+An `Ordination` from saved coordinates (samples × axes) and their metadata, e.g. to plot
+an ordination written to disk. The sample names are `metadata.sample` when there is such a
+column, otherwise `"1"`, `"2"`, ….
+"""
+function Ordination(points::AbstractMatrix{<:Real}, metadata::DataFrame; method::Symbol=:nmds,
+                    distance::Symbol=:unknown, axislabels=["Dim $i" for i in 1:size(points, 2)])
+    size(points, 1) == nrow(metadata) || throw(ArgumentError("points and metadata have different numbers of rows"))
+    names = :sample in propertynames(metadata) ? string.(metadata.sample) : string.(1:size(points, 1))
+    return Ordination(Matrix{Float64}(points), names, metadata, method, distance, collect(String, axislabels), nothing)
+end
+
+"""
     ordinate(c, method=:nmds; distance=:braycurtis, k=2, kw...)
     ordinate(D::DistanceMatrix, c, method=:nmds; k=2, kw...)
 

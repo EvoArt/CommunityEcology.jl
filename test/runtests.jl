@@ -44,6 +44,21 @@ end
                plot_alpha(C; group=:group), plot_rarefaction(C),
                plot_heatmap(C), plot_dispersion(bd), plot_tree(t)]
     @test all(f -> f isa Figure, figures)
+    meta = transform(META, :temperature => (t -> ifelse.(t .> 14, "warm", "cold")) => :temp)
+    saved = Ordination(o.points, meta)
+    @test saved.samples == IDS && saved.axislabels == ["Dim 1", "Dim 2"]
+    f = Figure(); ax = Axis(f[1, 1])
+    p = plot_ordination!(ax, saved; colorby=:group, markerby=:temp, palette=Dict("A" => :red, "B" => :blue),
+                        markers=Dict("cold" => :circle, "warm" => :diamond), alpha=0.7, centroids=true)
+    @test length(p.plots) == 1 + 2 * 3 + 2          # points; line + centroid per subgroup (A: cold, warm; B: warm); group centroids
+    @test plot_ordination!(ax, saved; colorby=:group, centroids=true) isa Makie.AbstractPlot   # spider lines to points
+    @test_throws ArgumentError plot_ordination!(ax, saved; colorby=:temperature, centroids=true)
+    CM = Community(X; samples=IDS, features=FEATURES, metadata=meta)
+    p = plot_composition!(ax, CM; features=["F3", "F1"], colors=[:red, :blue], sortby=[:group => ["B", "A"], :temp],
+                         above=:temp, below=:group, grouplabels=Dict("A" => "Group A"), groupcolors=Dict("B" => :green))
+    @test length(p.plots) == 1 + 2 * 3 + 2 * 2      # bars; bracket + label per run (above: warm, cold, warm; below: B, A)
+    @test_throws ArgumentError plot_composition!(ax, CM; features=["F9"])
+    @test_throws ArgumentError plot_composition!(ax, CM; sortby=:group => ["A"])
     mktempdir() do dir
         file = joinpath(dir, "ordination.png")
         save(file, first(figures))
