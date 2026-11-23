@@ -1,6 +1,8 @@
 # CommunityEcology.jl
 
 [![Dev docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://EvoArt.github.io/CommunityEcology.jl/dev/)
+[![CI](https://github.com/EvoArt/CommunityEcology.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/EvoArt/CommunityEcology.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/EvoArt/CommunityEcology.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/EvoArt/CommunityEcology.jl)
 
 [Documentation](https://EvoArt.github.io/CommunityEcology.jl/dev/) · [Source](https://github.com/EvoArt/CommunityEcology.jl)
 
