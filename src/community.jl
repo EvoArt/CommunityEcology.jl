@@ -163,26 +163,67 @@ end
 # ---------------------------------------------------------------- accessors
 
 nsamples(c::Community) = size(c.counts, 1)
+"""
+    nfeatures(c) -> Int
+
+Number of features (columns) in `c`.
+"""
 nfeatures(c::Community) = size(c.counts, 2)
 Base.size(c::Community) = size(c.counts)
 Base.size(c::Community, d) = size(c.counts, d)
-"Sample names."
+"""
+    samples(c) -> Vector{String}
+
+Sample names.
+"""
 samples(c::Community) = c.samples
-"Feature (ASV/taxon) names."
+"""
+    features(c) -> Vector{String}
+
+Feature (ASV/taxon) names.
+"""
 features(c::Community) = c.features
-"The samples × features count matrix."
+"""
+    counts(c) -> Matrix
+
+Samples × features count matrix.
+"""
 counts(c::Community) = c.counts
-"Sample metadata (a `DataFrame`, one row per sample)."
+"""
+    metadata(c) -> DataFrame
+
+Sample metadata, one row per sample.
+"""
 metadata(c::Community) = c.metadata
-"Taxonomy (a `DataFrame`, one row per feature), or `nothing`."
+"""
+    taxonomy(c) -> Union{DataFrame,Nothing}
+
+Taxonomy, one row per feature, or `nothing`.
+"""
 taxonomy(c::Community) = c.taxonomy
-"Feature sequences (empty if unknown)."
+"""
+    sequences(c) -> Vector{String}
+
+Feature sequences; empty if unknown.
+"""
 sequences(c::Community) = c.sequences
-"The phylogenetic tree, or `nothing`."
+"""
+    tree(c) -> Union{PhyloTree,Nothing}
+
+Phylogenetic tree of the features, or `nothing`.
+"""
 tree(c::Community) = c.tree
-"Taxonomic ranks available, as `Symbol`s."
+"""
+    ranks(c) -> Vector{Symbol}
+
+Taxonomic rank columns; empty without taxonomy.
+"""
 ranks(c::Community) = c.taxonomy === nothing ? Symbol[] : Symbol.(names(c.taxonomy))
-"Total count (sequencing depth) of each sample."
+"""
+    sample_depths(c) -> Vector
+
+Total count (sequencing depth) of each sample.
+"""
 sample_depths(c::Community) = vec(sum(c.counts; dims=2))
 
 """

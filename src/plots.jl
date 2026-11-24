@@ -21,7 +21,13 @@ To plot saved coordinates, wrap them in `Ordination(points, metadata)`.
 function plot_ordination end
 function plot_ordination! end
 
-"""Plot site scores and feature directions from a two-axis `RDAResult`."""
+"""
+    plot_rda(r::RDAResult; size=(800, 550), labels=false, showfeatures=true, markersize=11) -> Figure
+    plot_rda!(axis, r::RDAResult; kwargs...)
+
+Plot RDA site scores on the first two constrained axes, with feature arrows if
+`showfeatures`. `labels` adds sample names. Needs two constrained axes.
+"""
 function plot_rda end
 function plot_rda! end
 
@@ -44,26 +50,61 @@ Plot the composition of each sample as stacked bars. Load a Makie backend first.
 function plot_composition end
 function plot_composition! end
 
-"""Plot one alpha diversity measure by sample or metadata group."""
+"""
+    plot_alpha(c::Community; measure=:shannon, group=nothing, size=(760, 470), markersize=11) -> Figure
+    plot_alpha!(axis, c::Community; kwargs...)
+
+Plot one [`alpha_diversity`](@ref) measure per sample, or jittered by metadata
+column `group` with group means.
+"""
 function plot_alpha end
 function plot_alpha! end
 
-"""Plot exact expected rarefaction curves for the samples of a community."""
+"""
+    plot_rarefaction(c::Community; step=nothing, linewidth=2, size=(760, 500)) -> Figure
+    plot_rarefaction!(axis, c::Community; kwargs...)
+
+Plot [`rarecurve`](@ref) expected richness against depth, one line per sample.
+Legend shown for ≤ 12 samples.
+"""
 function plot_rarefaction end
 function plot_rarefaction! end
 
-"""Plot a sample-by-feature abundance heatmap."""
+"""
+    plot_heatmap(c::Community; proportions=true, colormap=:viridis, size=(850, 550)) -> Figure
+    plot_heatmap!(axis, c::Community; kwargs...)
+
+Plot a samples × features heatmap of relative abundances (`proportions=true`)
+or counts.
+"""
 function plot_heatmap end
 function plot_heatmap! end
 
-"""Plot distances to group centres from a `BetaDisper` result."""
+"""
+    plot_dispersion(bd::BetaDisper; size=(700, 450), markersize=11) -> Figure
+    plot_dispersion!(axis, bd::BetaDisper; kwargs...)
+
+Plot each sample's distance to its group centre, with group means.
+"""
 function plot_dispersion end
 function plot_dispersion! end
 
-"""Plot a Shepard diagram for an `NMDSResult` or an NMDS `Ordination`."""
+"""
+    plot_shepard(r; size=(700, 480), markersize=5) -> Figure
+    plot_shepard!(axis, r; kwargs...)
+
+Shepard diagram (ordination distance vs observed dissimilarity, with the fitted
+monotone curve). `r` is an `NMDSResult` or an NMDS [`Ordination`](@ref).
+"""
 function plot_shepard end
 function plot_shepard! end
 
-"""Plot a rooted `PhyloTree` as a rectangular tree."""
+"""
+    plot_tree(t; size=(800, 550), linecolor=:teal, linewidth=2, labels=true) -> Figure
+    plot_tree!(axis, t; kwargs...)
+
+Plot a rooted `PhyloTree` as a rectangular cladogram with branch lengths.
+`t` may be a [`Community`](@ref) with a tree. `labels` shows tip names.
+"""
 function plot_tree end
 function plot_tree! end

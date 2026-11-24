@@ -23,6 +23,11 @@ struct PhyloTree
 end
 
 ntips(t::PhyloTree) = t.ntips
+"""
+    tiplabels(t) -> Vector{String}
+
+Tip names of `t`, in tip order.
+"""
 tiplabels(t::PhyloTree) = t.names[1:t.ntips]
 nnodes(t::PhyloTree) = length(t.parent)
 

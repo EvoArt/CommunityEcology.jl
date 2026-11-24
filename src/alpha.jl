@@ -4,19 +4,39 @@
 
 _props(x) = (s = sum(x); s > 0 ? [v / s for v in x if v > 0] : Float64[])
 
-"Number of features present (count > 0)."
+"""
+    richness(x) -> Int
+
+Number of entries of `x` greater than zero.
+"""
 richness(x::AbstractVector) = count(>(0), x)
 
-"Shannon index H = -Σ pᵢ log pᵢ (natural log), as `vegan::diversity`."
+"""
+    shannon(x) -> Float64
+
+Shannon index `-Σ pᵢ log pᵢ` (natural log), as `vegan::diversity`.
+"""
 shannon(x::AbstractVector) = -sum((p * log(p) for p in _props(x)); init=0.0)
 
-"Gini-Simpson index 1 - Σ pᵢ², as `vegan::diversity(index=\"simpson\")`."
+"""
+    simpson(x) -> Float64
+
+Gini-Simpson index `1 - Σ pᵢ²`, as `vegan::diversity(index="simpson")`.
+"""
 simpson(x::AbstractVector) = 1 - sum(abs2, _props(x); init=0.0)
 
-"Inverse Simpson index 1 / Σ pᵢ² (the effective number of common features)."
+"""
+    invsimpson(x) -> Float64
+
+Inverse Simpson index `1 / Σ pᵢ²`; `0.0` for an empty sample.
+"""
 invsimpson(x::AbstractVector) = (s = sum(abs2, _props(x); init=0.0); s > 0 ? 1 / s : 0.0)
 
-"Pielou's evenness H / log(S)."
+"""
+    pielou(x) -> Float64
+
+Pielou's evenness `shannon(x) / log(richness(x))`; `NaN` if richness ≤ 1.
+"""
 pielou(x::AbstractVector) = (S = richness(x); S > 1 ? shannon(x) / log(S) : NaN)
 
 """
